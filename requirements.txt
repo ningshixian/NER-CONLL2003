@@ -1,0 +1,14 @@
+nltk==3.4
+tqdm==4.35.0
+tensorflow==1.15.0
+tensorflow-gpu==1.14.0
+scipy==1.2.1
+pandas==0.25.1
+seqeval==0.0.12
+Keras==2.3.1
+joblib==0.13.2
+numpy==1.16.4
+sklearn_crfsuite==0.3.6
+gensim==3.8.0
+scikit_learn==0.21.3
+word2vec==0.10.2

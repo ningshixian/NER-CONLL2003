@@ -1,73 +1,91 @@
-# NER-CONLL2003
+# bert-based-ner
 
-###什么是NER？
+## 实验环境
 
-命名实体识别（NER）是指识别文本中具有特定意义的实体，主要包括人名、地名、机构名、专有名词等。命名实体识别是信息提取、问答系统、句法分析、机器翻译等应用领域的重要基础工具，作为结构化信息提取的重要步骤。摘自BosonNLP
+部署43服务器，nsx_env环境，GPU (Tesla P100 16G)
 
-##Task CoNLL 2003
+## 依赖包安装
 
-[CoNLL-2003 Shared Task](https://cogcomp.org/page/resource_view/81): Language-Independent Named Entity Recognition
+```
+python3 -m pip install -r requirements.txt
+```
 
-The CoNLL-2003 (Sang et al. 2003) shared task deals with language-independent named entity recognition as well (English and German).
+## 实验流程
 
-## Results
+> 代码结构
 
-| References                               | Method                                   | F1    |
-| ---------------------------------------- | ---------------------------------------- | ----- |
-| [Ma 2016](https://arxiv.org/pdf/1603.01354.pdf) | CNN-bidirectional LSTM-CRF               | 91.21 |
-| Luo et al. (2015)                        | JERL                                     | 91.20 |
-| Chiu et al. (2015)                       | BLSTM-CNN + emb + lex                    | 91.62 |
-| Huang et al. (2015)                      | BI-LSTM-CRF                              | 90.10 |
-| Passos et al. (2014)                     | Baseline + Gaz + LexEmb                  | 90.90 |
-| Suzuki et al. (2011)                     | L1CRF                                    | 91.02 |
-| Collobert et al. (2011)                  | NN+SLL+LM2+Gazetteer                     | 89.59 |
-| Collobert et al. (2011)                  | NN+SLL+LM2                               | 88.67 |
-| Ratinov et al. (2009)                    | Word-class Model                         | 90.80 |
-| Lin et al. (2009)                        | W500 + P125 + P64                        | 90.90 |
-| Ando et al. (2005)                       | Semi-supervised approach                 | 89.31 |
-| Florian et al. (2003)                    | Combination of various machine-learning classifiers | 88.76 |
+1. 数据预处理 preprocess.py
 
----
+```
+利用正则定位噪声，对原始数据的清洗
+清除非中英文和非常见标点符号的字符
+......
+标注4种类型的实体
+采用BIO标注策略
+修改longfor数据的处理代码bug
+去除paddleLAC提取出的数字时间
+去除无标注实体的句子
+训练集/验证集/测试集划分
+将清洗后的数据转换成CONLL格式
 
-###模型训练过程
+数据量2342*32
+```
 
-1. 首先导入数据 training，validation，test
+2. 构建实体识别模型 model.py
 
-2. 把单词转化成 one-hot 向量后，再转化成词向量
-
-3. 输入层的输入，以每个词为中心,取其窗口大小为3的上下文语境
-
-   L2 正则化和用 dropout 来减小过拟合
-
-   Five classes 0-None,1-Person,2-Location,3-Organisation,4-Misc
-
-4. 用交叉熵来计算误差
-
-5. J 对各个参数进行求导
-
-   Adam优化算法更新梯度，不断地迭代，使得loss越来越小直至收敛。
+   尝试使用多种预训练语言模型（BERT/AL_BERT/ROBERT），并分别下接了IDCNN-CRF和BLSTM-CRF两种结构来构建实体识别模型。
 
 
+3. 工具类 utils.py
 
-## References
-
-- **End-to-end Sequence Labeling via Bi-directional LSTM-CNNs-CRF** (ACL'16), Ma et al. [[pdf](https://arxiv.org/pdf/1603.01354.pdf)]
-- **Named Entity Recognition with Bidirectional LSTM-CNNs** (CL'15), JPC Chiu et al. [[pdf](https://arxiv.org/pdf/1511.08308.pdf)]
-- **Bidirectional LSTM-CRF Models for Sequence Tagging** (EMNLP'15), Z Huang et al. [[pdf](https://arxiv.org/pdf/1508.01991.pdf)]
-- **Joint entity recognition and disambiguation** (EMNLP '15), G Luo et al. [[pdf](http://aclweb.org/anthology/D15-1104)]
-- **Lexicon infused phrase embeddings for named entity resolution** (ACL'14), A Passos et al. [[pdf](http://www.aclweb.org/anthology/W14-1609)]
-- **Learning condensed feature representations from large unsupervised data sets for supervised learning** (ACL'11), J Suzuki et al. [[pdf](http://www.aclweb.org/anthology/P11-2112)]
-- **Natural Language Processing (Almost) from Scratch** (CL'11), R Collobert et al. [[pdf](http://www.jmlr.org/papers/volume12/collobert11a/collobert11a.pdf)]
-- **Design Challenges and Misconceptions in Named Entity Recognition** (CoNLL'09), L Ratinov et al. [[pdf](http://www.aclweb.org/anthology/W09-1119)]
-- **Phrase Clustering for Discriminative Learning** (ACL '09), D Lin et al. [[pdf](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/35520.pdf)]
-- **A Framework for Learning Predictive Structures from Multiple Tasks and Unlabeled Data** (JMLR'05), RK Ando et al. [[pdf](http://www.jmlr.org/papers/volume6/ando05a/ando05a.pdf)]
-- **Named Entity Recognition through Classifier Combination** (HLT-NAACL'03), R Florian et al. [[pdf](http://clair.si.umich.edu/clair/HLT-NAACL03/conll/pdf/florian.pdf)]
-- **Introduction to the CoNLL-2003 Shared Task: Language-Independent Named Entity Recognition** (CoNLL'03), EFTK Sang et al. [[pdf](http://aclweb.org/anthology/W03-0419)]
-
-**See Also**
-
-- [☶ Named Entity Recognition (State of The Art)](https://github.com/magizbox/underthesea/wiki/English-NLP-SOTA#named-entity-recognition)
+   数据迭代器，用于生成batch数据喂给模型
 
 
+4. 模型训练 train_finetune.py
+
+   - 数据的喂入
+   - 模型的fine-tuning
+   - 模型保存
+
+5. 模型预测 predict.py
+
+   - 读取最优F1结果的模型，对测试集进行预测
+   - 将生成的概率文件复原成文字结果
+
+6. post_process.py
+
+   后处理脚本
+
+7. config.py
+
+   超参数设置和路径设置
 
 
+## 实验结果
+
+1. BLSTM+CRF
+
+  test: f1: 0.82073, precision: 0.70942, recall: 0.97346
+
+2. BLSTM+CRF+BERT
+
+   尝试加入 [`BERT-Base, Chinese`](https://storage.googleapis.com/bert_models/2018_11_03/chinese_L-12_H-768_A-12.zip) (版本chinese_L-12_H-768_A-12)，模型参数量过大，训练太慢，放弃;
+
+3. BLSTM+CRF+ALBERT
+
+   - 使用 [`albert-base, chinese`](https://storage.googleapis.com/albert_models/albert_base_zh.tar.gz)，去掉BLSTM层
+     - 迭代15次，用时11个小时
+     - test: f1: 0.90598, precision: 0.92791, recall: 0.88505
+   - 使用 [`albert-large, chinese`](https://storage.googleapis.com/albert_models/albert_large_zh.tar.gz)，去掉BLSTM层
+     - 迭代20次，用时12个小时，一次迭代需55分钟
+     - test: f1: 0.91092, precision: 0.92695, recall: 0.89544
+   - 尝试 [`albert-xlarge, chinese`](https://storage.googleapis.com/albert_models/albert_xlarge_zh.tar.gz)
+     - 报OOM错误，内存不够，放弃！
+   - 使用 [`albert-large, chinese`](https://storage.googleapis.com/albert_models/albert_large_zh.tar.gz)，加入BLSTM层
+     - 一次迭代需一个半小时
+     - 调整max_len=150，batch_size=64后，一次迭代需50分钟左右，test一次1个半小时左右
+     - test: f1: 0.89363, precision: 0.91806, recall: 0.87047（未迭代完....）
+   - 继续改进
+     1. 加入`自动混合精度训练` 
+     2. 重计算技巧？AdaFactor？
+     3. 迭代10次之后才开始计算在测试集上的PRF值
